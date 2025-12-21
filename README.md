@@ -28,6 +28,7 @@ Commands can be abbreviated (e.g., `v` or `ver` for `version`).
 
 - `-l, --loop-mode` - Continuously update display (vitals only). Press ESC or Ctrl+C to exit.
 - `-d, --delay <SECONDS>` - Delay between updates in loop mode (default: 5).
+- `--log <FILE>` - Log raw JSON responses with timestamps to a file for later processing.
 
 ### Commands
 

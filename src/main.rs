@@ -6,11 +6,33 @@ use crossterm::{
     execute,
     terminal::{self, Clear, ClearType},
 };
-use serde::Deserialize;
+use log::info;
+use serde::{Deserialize, Serialize};
+use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
+use std::fs::OpenOptions;
 use std::io::{stdout, Write};
+use std::path::PathBuf;
 use std::time::Duration;
 
 const COMMANDS: &[&str] = &["lifetime", "version", "vitals", "wifi_status"];
+
+fn init_logging(log_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)?;
+
+    let config = ConfigBuilder::new()
+        .set_time_format_rfc3339()
+        .build();
+
+    WriteLogger::init(LevelFilter::Info, config, file)?;
+    Ok(())
+}
+
+fn log_json(endpoint: &str, json: &str) {
+    info!("{}: {}", endpoint, json);
+}
 
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
@@ -29,6 +51,10 @@ struct Args {
     /// Delay in seconds between updates in loop mode
     #[arg(short, long, default_value = "5")]
     delay: u64,
+
+    /// Log file for debug output (JSON data with timestamps)
+    #[arg(long)]
+    log: Option<PathBuf>,
 }
 
 fn match_command(input: &str) -> Result<&'static str, String> {
@@ -53,7 +79,7 @@ fn match_command(input: &str) -> Result<&'static str, String> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Version {
     firmware_version: String,
     git_branch: String,
@@ -62,14 +88,16 @@ struct Version {
     web_service: String,
 }
 
-fn get_version(addr: &str) -> Result<Version, reqwest::Error> {
+fn get_version(addr: &str) -> Result<Version, Box<dyn std::error::Error>> {
     let url = format!("http://{}/api/1/version", addr);
     let response = reqwest::blocking::get(&url)?;
-    let version: Version = response.json()?;
+    let text = response.text()?;
+    log_json("version", &text);
+    let version: Version = serde_json::from_str(&text)?;
     Ok(version)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct WifiStatus {
     wifi_ssid: String,
     wifi_signal_strength: i32,
@@ -81,10 +109,12 @@ struct WifiStatus {
     wifi_mac: String,
 }
 
-fn get_wifi_status(addr: &str) -> Result<WifiStatus, reqwest::Error> {
+fn get_wifi_status(addr: &str) -> Result<WifiStatus, Box<dyn std::error::Error>> {
     let url = format!("http://{}/api/1/wifi_status", addr);
     let response = reqwest::blocking::get(&url)?;
-    let status: WifiStatus = response.json()?;
+    let text = response.text()?;
+    log_json("wifi_status", &text);
+    let status: WifiStatus = serde_json::from_str(&text)?;
     Ok(status)
 }
 
@@ -116,7 +146,7 @@ fn run_wifi_status(addr: &str) {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Lifetime {
     contactor_cycles: u32,
     contactor_cycles_loaded: u32,
@@ -130,10 +160,12 @@ struct Lifetime {
     charging_time_s: u64,
 }
 
-fn get_lifetime(addr: &str) -> Result<Lifetime, reqwest::Error> {
+fn get_lifetime(addr: &str) -> Result<Lifetime, Box<dyn std::error::Error>> {
     let url = format!("http://{}/api/1/lifetime", addr);
     let response = reqwest::blocking::get(&url)?;
-    let lifetime: Lifetime = response.json()?;
+    let text = response.text()?;
+    log_json("lifetime", &text);
+    let lifetime: Lifetime = serde_json::from_str(&text)?;
     Ok(lifetime)
 }
 
@@ -172,7 +204,7 @@ fn run_lifetime(addr: &str) {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Vitals {
     contactor_closed: bool,
     vehicle_connected: bool,
@@ -210,10 +242,12 @@ struct Vitals {
     evse_not_ready_reasons: Vec<u32>,
 }
 
-fn get_vitals(addr: &str) -> Result<Vitals, reqwest::Error> {
+fn get_vitals(addr: &str) -> Result<Vitals, Box<dyn std::error::Error>> {
     let url = format!("http://{}/api/1/vitals", addr);
     let response = reqwest::blocking::get(&url)?;
-    let vitals: Vitals = response.json()?;
+    let text = response.text()?;
+    log_json("vitals", &text);
+    let vitals: Vitals = serde_json::from_str(&text)?;
     Ok(vitals)
 }
 
@@ -334,6 +368,14 @@ fn run_version(addr: &str) {
 
 fn main() {
     let args = Args::parse();
+
+    // Initialize logging if log file specified
+    if let Some(ref log_path) = args.log {
+        if let Err(e) = init_logging(log_path) {
+            eprintln!("Failed to initialize logging: {}", e);
+            std::process::exit(1);
+        }
+    }
 
     let command = match match_command(&args.command) {
         Ok(cmd) => cmd,
