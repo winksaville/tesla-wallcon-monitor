@@ -19,27 +19,22 @@ $ cargo build --release
 ## Usage
 
 ```bash
-$ cargo run -- --help
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
-     Running `target/debug/tesla-wallcon-monitor --help`
-Monitor a Tesla Wall Connector
-
-Usage: tesla-wallcon-monitor <ADDR>
-
-Arguments:
-  <ADDR>  Name or IP address of the wall connector
-
-Options:
-  -h, --help  Print help
+tesla-wallcon-monitor <ADDR> <COMMAND>
 ```
+
+Commands can be abbreviated (e.g., `v` or `ver` for `version`).
+
+### Commands
+
+- `version` - Display firmware and device information
 
 ### Example
 
 ```bash
-$ tesla-wallcon-monitor 192.168.1.221
+$ tesla-wallcon-monitor 192.168.1.221 version
 Tesla Wall Connector Version Info:
-  Firmware Version: 24.36.3+gf5ba241b03c449
-  Git Branch:       heads/24.36.3
+  Firmware Version: 25.34.1+ge48cc9be91ebc7
+  Git Branch:       HEAD
   Part Number:      1529455-02-D
   Serial Number:    TWC123456789
   Web Service:      0.1.0

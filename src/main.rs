@@ -1,12 +1,39 @@
 use clap::Parser;
 use serde::Deserialize;
 
+const COMMANDS: &[&str] = &["version"];
+
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
 #[command(about = "Monitor a Tesla Wall Connector")]
 struct Args {
     /// Name or IP address of the wall connector
     addr: String,
+
+    /// Command to execute (can be abbreviated)
+    command: String,
+}
+
+fn match_command(input: &str) -> Result<&'static str, String> {
+    let matches: Vec<&str> = COMMANDS
+        .iter()
+        .filter(|cmd| cmd.starts_with(input))
+        .copied()
+        .collect();
+
+    match matches.len() {
+        0 => Err(format!(
+            "Unknown command '{}'. Available commands: {}",
+            input,
+            COMMANDS.join(", ")
+        )),
+        1 => Ok(matches[0]),
+        _ => Err(format!(
+            "Ambiguous command '{}'. Matches: {}",
+            input,
+            matches.join(", ")
+        )),
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -25,10 +52,8 @@ fn get_version(addr: &str) -> Result<Version, reqwest::Error> {
     Ok(version)
 }
 
-fn main() {
-    let args = Args::parse();
-
-    match get_version(&args.addr) {
+fn run_version(addr: &str) {
+    match get_version(addr) {
         Ok(version) => {
             println!("Tesla Wall Connector Version Info:");
             println!("  Firmware Version: {}", version.firmware_version);
@@ -41,5 +66,22 @@ fn main() {
             eprintln!("Error fetching version: {}", e);
             std::process::exit(1);
         }
+    }
+}
+
+fn main() {
+    let args = Args::parse();
+
+    let command = match match_command(&args.command) {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
+    };
+
+    match command {
+        "version" => run_version(&args.addr),
+        _ => unreachable!(),
     }
 }
