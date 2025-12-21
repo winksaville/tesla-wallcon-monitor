@@ -25,6 +25,10 @@ struct Args {
     /// Loop mode: continuously update display (vitals only)
     #[arg(short, long)]
     loop_mode: bool,
+
+    /// Delay in seconds between updates in loop mode
+    #[arg(short, long, default_value = "5")]
+    delay: u64,
 }
 
 fn match_command(input: &str) -> Result<&'static str, String> {
@@ -259,9 +263,9 @@ fn print_vitals_raw(vitals: &Vitals) {
     print!("{}\r\n", format_vitals(vitals).replace('\n', "\r\n"));
 }
 
-fn run_vitals(addr: &str, loop_mode: bool) {
+fn run_vitals(addr: &str, loop_mode: bool, delay: u64) {
     if loop_mode {
-        run_vitals_loop(addr);
+        run_vitals_loop(addr, delay);
     } else {
         match get_vitals(addr) {
             Ok(vitals) => print_vitals(&vitals),
@@ -273,7 +277,7 @@ fn run_vitals(addr: &str, loop_mode: bool) {
     }
 }
 
-fn run_vitals_loop(addr: &str) {
+fn run_vitals_loop(addr: &str, delay: u64) {
     terminal::enable_raw_mode().expect("Failed to enable raw mode");
     let mut stdout = stdout();
 
@@ -284,7 +288,7 @@ fn run_vitals_loop(addr: &str) {
         match get_vitals(addr) {
             Ok(vitals) => {
                 print_vitals_raw(&vitals);
-                print!("\r\n  Press ESC or Ctrl+C to exit\r\n");
+                print!("\r\n  Press ESC or Ctrl+C to exit (updates every {}s)\r\n", delay);
             }
             Err(e) => {
                 print!("Error fetching vitals: {}\r\n", e);
@@ -293,8 +297,8 @@ fn run_vitals_loop(addr: &str) {
         }
         stdout.flush().unwrap();
 
-        // Check for key press with 1 second timeout
-        if event::poll(Duration::from_secs(1)).unwrap() {
+        // Check for key press with configured delay timeout
+        if event::poll(Duration::from_secs(delay)).unwrap() {
             if let Event::Key(key_event) = event::read().unwrap() {
                 match key_event.code {
                     KeyCode::Esc => break,
@@ -342,7 +346,7 @@ fn main() {
     match command {
         "lifetime" => run_lifetime(&args.addr),
         "version" => run_version(&args.addr),
-        "vitals" => run_vitals(&args.addr, args.loop_mode),
+        "vitals" => run_vitals(&args.addr, args.loop_mode, args.delay),
         "wifi_status" => run_wifi_status(&args.addr),
         _ => unreachable!(),
     }
