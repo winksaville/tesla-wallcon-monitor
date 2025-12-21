@@ -2,7 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use clap::Parser;
 use serde::Deserialize;
 
-const COMMANDS: &[&str] = &["version", "wifi_status"];
+const COMMANDS: &[&str] = &["lifetime", "version", "wifi_status"];
 
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
@@ -100,6 +100,62 @@ fn run_wifi_status(addr: &str) {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct Lifetime {
+    contactor_cycles: u32,
+    contactor_cycles_loaded: u32,
+    alert_count: u32,
+    thermal_foldbacks: u32,
+    avg_startup_temp: f64,
+    charge_starts: u32,
+    energy_wh: u64,
+    connector_cycles: u32,
+    uptime_s: u64,
+    charging_time_s: u64,
+}
+
+fn get_lifetime(addr: &str) -> Result<Lifetime, reqwest::Error> {
+    let url = format!("http://{}/api/1/lifetime", addr);
+    let response = reqwest::blocking::get(&url)?;
+    let lifetime: Lifetime = response.json()?;
+    Ok(lifetime)
+}
+
+fn format_duration(seconds: u64) -> String {
+    let days = seconds / 86400;
+    let hours = (seconds % 86400) / 3600;
+    let mins = (seconds % 3600) / 60;
+    if days > 0 {
+        format!("{}d {}h {}m", days, hours, mins)
+    } else if hours > 0 {
+        format!("{}h {}m", hours, mins)
+    } else {
+        format!("{}m", mins)
+    }
+}
+
+fn run_lifetime(addr: &str) {
+    match get_lifetime(addr) {
+        Ok(lifetime) => {
+            println!("Tesla Wall Connector Lifetime Stats:");
+            println!("  Charge Starts:      {}", lifetime.charge_starts);
+            println!("  Energy Delivered:   {:.2} kWh", lifetime.energy_wh as f64 / 1000.0);
+            println!("  Charging Time:      {}", format_duration(lifetime.charging_time_s));
+            println!("  Uptime:             {}", format_duration(lifetime.uptime_s));
+            println!("  Contactor Cycles:   {}", lifetime.contactor_cycles);
+            println!("  Loaded Cycles:      {}", lifetime.contactor_cycles_loaded);
+            println!("  Connector Cycles:   {}", lifetime.connector_cycles);
+            println!("  Thermal Foldbacks:  {}", lifetime.thermal_foldbacks);
+            println!("  Alert Count:        {}", lifetime.alert_count);
+            println!("  Avg Startup Temp:   {:.1}°C", lifetime.avg_startup_temp);
+        }
+        Err(e) => {
+            eprintln!("Error fetching lifetime stats: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
 fn run_version(addr: &str) {
     match get_version(addr) {
         Ok(version) => {
@@ -129,6 +185,7 @@ fn main() {
     };
 
     match command {
+        "lifetime" => run_lifetime(&args.addr),
         "version" => run_version(&args.addr),
         "wifi_status" => run_wifi_status(&args.addr),
         _ => unreachable!(),

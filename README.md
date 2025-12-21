@@ -26,12 +26,26 @@ Commands can be abbreviated (e.g., `v` or `ver` for `version`).
 
 ### Commands
 
+- `lifetime` - Display lifetime statistics
 - `version` - Display firmware and device information
 - `wifi_status` - Display WiFi connection status
 
 ### Examples
 
 ```bash
+$ tesla-wallcon-monitor 192.168.1.221 lifetime
+Tesla Wall Connector Lifetime Stats:
+  Charge Starts:      1054
+  Energy Delivered:   5276.62 kWh
+  Charging Time:      45d 13h 54m
+  Uptime:             588d 0h 18m
+  Contactor Cycles:   1054
+  Loaded Cycles:      66
+  Connector Cycles:   483
+  Thermal Foldbacks:  0
+  Alert Count:        2243
+  Avg Startup Temp:   0.0°C
+
 $ tesla-wallcon-monitor 192.168.1.221 version
 Tesla Wall Connector Version Info:
   Firmware Version: 25.34.1+ge48cc9be91ebc7
