@@ -19,10 +19,14 @@ $ cargo build --release
 ## Usage
 
 ```bash
-tesla-wallcon-monitor <ADDR> <COMMAND>
+tesla-wallcon-monitor [OPTIONS] <ADDR> <COMMAND>
 ```
 
 Commands can be abbreviated (e.g., `v` or `ver` for `version`).
+
+### Options
+
+- `-l, --loop-mode` - Continuously update display (vitals only). Press ESC or Ctrl+C to exit.
 
 ### Commands
 
