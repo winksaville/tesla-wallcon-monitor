@@ -27,8 +27,9 @@ Commands can be abbreviated (e.g., `v` or `ver` for `version`).
 ### Commands
 
 - `version` - Display firmware and device information
+- `wifi_status` - Display WiFi connection status
 
-### Example
+### Examples
 
 ```bash
 $ tesla-wallcon-monitor 192.168.1.221 version
@@ -38,6 +39,17 @@ Tesla Wall Connector Version Info:
   Part Number:      1529455-02-D
   Serial Number:    TWC123456789
   Web Service:      0.1.0
+
+$ tesla-wallcon-monitor 192.168.1.221 wifi_status
+Tesla Wall Connector WiFi Status:
+  SSID:            MyNetwork
+  Connected:       true
+  Signal Strength: 66%
+  RSSI:            -57 dBm
+  SNR:             36 dB
+  IP Address:      192.168.1.221
+  Internet:        true
+  MAC Address:     54:F8:F0:0A:30:AA
 ```
 
 ## License

@@ -1,7 +1,8 @@
+use base64::{engine::general_purpose::STANDARD, Engine};
 use clap::Parser;
 use serde::Deserialize;
 
-const COMMANDS: &[&str] = &["version"];
+const COMMANDS: &[&str] = &["version", "wifi_status"];
 
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
@@ -52,6 +53,53 @@ fn get_version(addr: &str) -> Result<Version, reqwest::Error> {
     Ok(version)
 }
 
+#[derive(Debug, Deserialize)]
+struct WifiStatus {
+    wifi_ssid: String,
+    wifi_signal_strength: i32,
+    wifi_rssi: i32,
+    wifi_snr: i32,
+    wifi_connected: bool,
+    wifi_infra_ip: String,
+    internet: bool,
+    wifi_mac: String,
+}
+
+fn get_wifi_status(addr: &str) -> Result<WifiStatus, reqwest::Error> {
+    let url = format!("http://{}/api/1/wifi_status", addr);
+    let response = reqwest::blocking::get(&url)?;
+    let status: WifiStatus = response.json()?;
+    Ok(status)
+}
+
+fn decode_ssid(encoded: &str) -> String {
+    STANDARD
+        .decode(encoded)
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap_or_else(|| encoded.to_string())
+}
+
+fn run_wifi_status(addr: &str) {
+    match get_wifi_status(addr) {
+        Ok(status) => {
+            println!("Tesla Wall Connector WiFi Status:");
+            println!("  SSID:            {}", decode_ssid(&status.wifi_ssid));
+            println!("  Connected:       {}", status.wifi_connected);
+            println!("  Signal Strength: {}%", status.wifi_signal_strength);
+            println!("  RSSI:            {} dBm", status.wifi_rssi);
+            println!("  SNR:             {} dB", status.wifi_snr);
+            println!("  IP Address:      {}", status.wifi_infra_ip);
+            println!("  Internet:        {}", status.internet);
+            println!("  MAC Address:     {}", status.wifi_mac);
+        }
+        Err(e) => {
+            eprintln!("Error fetching wifi status: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
 fn run_version(addr: &str) {
     match get_version(addr) {
         Ok(version) => {
@@ -82,6 +130,7 @@ fn main() {
 
     match command {
         "version" => run_version(&args.addr),
+        "wifi_status" => run_wifi_status(&args.addr),
         _ => unreachable!(),
     }
 }
