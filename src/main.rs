@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches, Parser};
 use crossterm::{
     cursor::MoveTo,
     event::{self, Event, KeyCode, KeyModifiers},
@@ -15,6 +15,28 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 const COMMANDS: &[&str] = &["lifetime", "version", "vitals", "wifi_status"];
+
+fn min_abbreviation(cmd: &str, all_commands: &[&str]) -> usize {
+    for len in 1..=cmd.len() {
+        let prefix = &cmd[..len];
+        let matches: Vec<_> = all_commands.iter().filter(|c| c.starts_with(prefix)).collect();
+        if matches.len() == 1 {
+            return len;
+        }
+    }
+    cmd.len()
+}
+
+fn format_commands_help() -> String {
+    let cmds: Vec<String> = COMMANDS
+        .iter()
+        .map(|cmd| {
+            let min_len = min_abbreviation(cmd, COMMANDS);
+            format!("({}){}", &cmd[..min_len], &cmd[min_len..])
+        })
+        .collect();
+    format!("Command: {}", cmds.join(", "))
+}
 
 fn init_logging(log_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let file = OpenOptions::new()
@@ -41,7 +63,7 @@ struct Args {
     /// Name or IP address of the wall connector
     addr: String,
 
-    /// Command to execute (can be abbreviated)
+    /// Command to execute
     command: String,
 
     /// Loop mode: continuously update display (vitals only)
@@ -367,7 +389,9 @@ fn run_version(addr: &str) {
 }
 
 fn main() {
-    let args = Args::parse();
+    let cmd = Args::command().mut_arg("command", |a| a.help(format_commands_help()));
+    let args = Args::from_arg_matches(&cmd.get_matches())
+        .expect("Failed to parse arguments");
 
     // Initialize logging if log file specified
     if let Some(ref log_path) = args.log {

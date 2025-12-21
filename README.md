@@ -22,8 +22,6 @@ $ cargo build --release
 tesla-wallcon-monitor [OPTIONS] <ADDR> <COMMAND>
 ```
 
-Commands can be abbreviated (e.g., `v` or `ver` for `version`).
-
 ### Options
 
 - `-l, --loop-mode` - Continuously update display (vitals only). Press ESC or Ctrl+C to exit.
@@ -32,14 +30,33 @@ Commands can be abbreviated (e.g., `v` or `ver` for `version`).
 
 ### Commands
 
-- `lifetime` - Display lifetime statistics
-- `version` - Display firmware and device information
-- `vitals` - Display real-time charging and electrical status
-- `wifi_status` - Display WiFi connection status
+Commands can be abbreviated to their minimum unique prefix:
+
+| Abbrev | Command      | Description                              |
+|--------|--------------|------------------------------------------|
+| l      | lifetime     | Display lifetime statistics              |
+| ve     | version      | Display firmware and device information  |
+| vi     | vitals       | Display real-time charging status        |
+| w      | wifi_status  | Display WiFi connection status           |
 
 ### Examples
 
 ```bash
+$ tesla-wallcon-monitor --help
+Monitor a Tesla Wall Connector
+
+Usage: tesla-wallcon-monitor [OPTIONS] <ADDR> <COMMAND>
+
+Arguments:
+  <ADDR>     Name or IP address of the wall connector
+  <COMMAND>  Command: (l)ifetime, (ve)rsion, (vi)tals, (w)ifi_status
+
+Options:
+  -l, --loop-mode      Loop mode: continuously update display (vitals only)
+  -d, --delay <DELAY>  Delay in seconds between updates in loop mode [default: 5]
+      --log <LOG>      Log file for debug output (JSON data with timestamps)
+  -h, --help           Print help
+
 $ tesla-wallcon-monitor 192.168.1.221 vitals
 Tesla Wall Connector Vitals:
   Vehicle Connected:  false
