@@ -213,39 +213,50 @@ fn get_vitals(addr: &str) -> Result<Vitals, reqwest::Error> {
     Ok(vitals)
 }
 
-fn print_vitals(vitals: &Vitals) {
-    println!("Tesla Wall Connector Vitals:");
-    println!("  Vehicle Connected:  {}", vitals.vehicle_connected);
-    println!("  Contactor Closed:   {}", vitals.contactor_closed);
-    println!("  Session Duration:   {}", format_duration(vitals.session_s));
-    println!("  Session Energy:     {:.3} kWh", vitals.session_energy_wh / 1000.0);
-    println!("  Vehicle Current:    {:.1} A", vitals.vehicle_current_a);
-    println!();
-    println!("  Grid Voltage:       {:.1} V", vitals.grid_v);
-    println!("  Grid Frequency:     {:.3} Hz", vitals.grid_hz);
-    println!("  Phase Currents:     A={:.1} B={:.1} C={:.1} N={:.1} A",
-        vitals.current_a_a, vitals.current_b_a, vitals.current_c_a, vitals.current_n_a);
-    println!("  Phase Voltages:     A={:.1} B={:.1} C={:.1} V",
-        vitals.voltage_a_v, vitals.voltage_b_v, vitals.voltage_c_v);
-    println!();
-    println!("  PCBA Temp:          {:.1}°C", vitals.pcba_temp_c);
-    println!("  Handle Temp:        {:.1}°C", vitals.handle_temp_c);
-    println!("  MCU Temp:           {:.1}°C", vitals.mcu_temp_c);
-    println!();
-    println!("  Pilot High/Low:     {:.1} / {:.1} V", vitals.pilot_high_v, vitals.pilot_low_v);
-    println!("  Proximity:          {:.1} V", vitals.prox_v);
-    println!("  Relay Coil:         {:.1} V", vitals.relay_coil_v);
-    println!("  Thermopile:         {} uV", vitals.input_thermopile_uv);
-    println!();
-    println!("  Uptime:             {}", format_duration(vitals.uptime_s));
-    println!("  EVSE State:         {}", vitals.evse_state);
-    println!("  Config Status:      {}", vitals.config_status);
+fn format_vitals(vitals: &Vitals) -> String {
+    let mut lines = vec![
+        "Tesla Wall Connector Vitals:".to_string(),
+        format!("  Vehicle Connected:  {}", vitals.vehicle_connected),
+        format!("  Contactor Closed:   {}", vitals.contactor_closed),
+        format!("  Session Duration:   {}", format_duration(vitals.session_s)),
+        format!("  Session Energy:     {:.3} kWh", vitals.session_energy_wh / 1000.0),
+        format!("  Vehicle Current:    {:.1} A", vitals.vehicle_current_a),
+        String::new(),
+        format!("  Grid Voltage:       {:.1} V", vitals.grid_v),
+        format!("  Grid Frequency:     {:.3} Hz", vitals.grid_hz),
+        format!("  Phase Currents:     A={:.1} B={:.1} C={:.1} N={:.1} A",
+            vitals.current_a_a, vitals.current_b_a, vitals.current_c_a, vitals.current_n_a),
+        format!("  Phase Voltages:     A={:.1} B={:.1} C={:.1} V",
+            vitals.voltage_a_v, vitals.voltage_b_v, vitals.voltage_c_v),
+        String::new(),
+        format!("  PCBA Temp:          {:.1}°C", vitals.pcba_temp_c),
+        format!("  Handle Temp:        {:.1}°C", vitals.handle_temp_c),
+        format!("  MCU Temp:           {:.1}°C", vitals.mcu_temp_c),
+        String::new(),
+        format!("  Pilot High/Low:     {:.1} / {:.1} V", vitals.pilot_high_v, vitals.pilot_low_v),
+        format!("  Proximity:          {:.1} V", vitals.prox_v),
+        format!("  Relay Coil:         {:.1} V", vitals.relay_coil_v),
+        format!("  Thermopile:         {} uV", vitals.input_thermopile_uv),
+        String::new(),
+        format!("  Uptime:             {}", format_duration(vitals.uptime_s)),
+        format!("  EVSE State:         {}", vitals.evse_state),
+        format!("  Config Status:      {}", vitals.config_status),
+    ];
     if !vitals.current_alerts.is_empty() {
-        println!("  Current Alerts:     {:?}", vitals.current_alerts);
+        lines.push(format!("  Current Alerts:     {:?}", vitals.current_alerts));
     }
     if !vitals.evse_not_ready_reasons.is_empty() {
-        println!("  Not Ready Reasons:  {:?}", vitals.evse_not_ready_reasons);
+        lines.push(format!("  Not Ready Reasons:  {:?}", vitals.evse_not_ready_reasons));
     }
+    lines.join("\n")
+}
+
+fn print_vitals(vitals: &Vitals) {
+    println!("{}", format_vitals(vitals));
+}
+
+fn print_vitals_raw(vitals: &Vitals) {
+    print!("{}\r\n", format_vitals(vitals).replace('\n', "\r\n"));
 }
 
 fn run_vitals(addr: &str, loop_mode: bool) {
@@ -272,14 +283,12 @@ fn run_vitals_loop(addr: &str) {
 
         match get_vitals(addr) {
             Ok(vitals) => {
-                print_vitals(&vitals);
-                println!();
-                println!("  Press ESC or Ctrl+C to exit");
+                print_vitals_raw(&vitals);
+                print!("\r\n  Press ESC or Ctrl+C to exit\r\n");
             }
             Err(e) => {
-                println!("Error fetching vitals: {}", e);
-                println!();
-                println!("  Press ESC or Ctrl+C to exit");
+                print!("Error fetching vitals: {}\r\n", e);
+                print!("\r\n  Press ESC or Ctrl+C to exit\r\n");
             }
         }
         stdout.flush().unwrap();
