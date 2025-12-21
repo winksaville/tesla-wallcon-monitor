@@ -2,7 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use clap::Parser;
 use serde::Deserialize;
 
-const COMMANDS: &[&str] = &["lifetime", "version", "wifi_status"];
+const COMMANDS: &[&str] = &["lifetime", "version", "vitals", "wifi_status"];
 
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
@@ -156,6 +156,94 @@ fn run_lifetime(addr: &str) {
     }
 }
 
+#[derive(Debug, Deserialize)]
+struct Vitals {
+    contactor_closed: bool,
+    vehicle_connected: bool,
+    session_s: u64,
+    grid_v: f64,
+    grid_hz: f64,
+    vehicle_current_a: f64,
+    #[serde(rename = "currentA_a")]
+    current_a_a: f64,
+    #[serde(rename = "currentB_a")]
+    current_b_a: f64,
+    #[serde(rename = "currentC_a")]
+    current_c_a: f64,
+    #[serde(rename = "currentN_a")]
+    current_n_a: f64,
+    #[serde(rename = "voltageA_v")]
+    voltage_a_v: f64,
+    #[serde(rename = "voltageB_v")]
+    voltage_b_v: f64,
+    #[serde(rename = "voltageC_v")]
+    voltage_c_v: f64,
+    relay_coil_v: f64,
+    pcba_temp_c: f64,
+    handle_temp_c: f64,
+    mcu_temp_c: f64,
+    uptime_s: u64,
+    input_thermopile_uv: i32,
+    prox_v: f64,
+    pilot_high_v: f64,
+    pilot_low_v: f64,
+    session_energy_wh: f64,
+    config_status: u32,
+    evse_state: u32,
+    current_alerts: Vec<serde_json::Value>,
+    evse_not_ready_reasons: Vec<u32>,
+}
+
+fn get_vitals(addr: &str) -> Result<Vitals, reqwest::Error> {
+    let url = format!("http://{}/api/1/vitals", addr);
+    let response = reqwest::blocking::get(&url)?;
+    let vitals: Vitals = response.json()?;
+    Ok(vitals)
+}
+
+fn run_vitals(addr: &str) {
+    match get_vitals(addr) {
+        Ok(vitals) => {
+            println!("Tesla Wall Connector Vitals:");
+            println!("  Vehicle Connected:  {}", vitals.vehicle_connected);
+            println!("  Contactor Closed:   {}", vitals.contactor_closed);
+            println!("  Session Duration:   {}", format_duration(vitals.session_s));
+            println!("  Session Energy:     {:.3} kWh", vitals.session_energy_wh / 1000.0);
+            println!("  Vehicle Current:    {:.1} A", vitals.vehicle_current_a);
+            println!();
+            println!("  Grid Voltage:       {:.1} V", vitals.grid_v);
+            println!("  Grid Frequency:     {:.3} Hz", vitals.grid_hz);
+            println!("  Phase Currents:     A={:.1} B={:.1} C={:.1} N={:.1} A",
+                vitals.current_a_a, vitals.current_b_a, vitals.current_c_a, vitals.current_n_a);
+            println!("  Phase Voltages:     A={:.1} B={:.1} C={:.1} V",
+                vitals.voltage_a_v, vitals.voltage_b_v, vitals.voltage_c_v);
+            println!();
+            println!("  PCBA Temp:          {:.1}°C", vitals.pcba_temp_c);
+            println!("  Handle Temp:        {:.1}°C", vitals.handle_temp_c);
+            println!("  MCU Temp:           {:.1}°C", vitals.mcu_temp_c);
+            println!();
+            println!("  Pilot High/Low:     {:.1} / {:.1} V", vitals.pilot_high_v, vitals.pilot_low_v);
+            println!("  Proximity:          {:.1} V", vitals.prox_v);
+            println!("  Relay Coil:         {:.1} V", vitals.relay_coil_v);
+            println!("  Thermopile:         {} uV", vitals.input_thermopile_uv);
+            println!();
+            println!("  Uptime:             {}", format_duration(vitals.uptime_s));
+            println!("  EVSE State:         {}", vitals.evse_state);
+            println!("  Config Status:      {}", vitals.config_status);
+            if !vitals.current_alerts.is_empty() {
+                println!("  Current Alerts:     {:?}", vitals.current_alerts);
+            }
+            if !vitals.evse_not_ready_reasons.is_empty() {
+                println!("  Not Ready Reasons:  {:?}", vitals.evse_not_ready_reasons);
+            }
+        }
+        Err(e) => {
+            eprintln!("Error fetching vitals: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
 fn run_version(addr: &str) {
     match get_version(addr) {
         Ok(version) => {
@@ -187,6 +275,7 @@ fn main() {
     match command {
         "lifetime" => run_lifetime(&args.addr),
         "version" => run_version(&args.addr),
+        "vitals" => run_vitals(&args.addr),
         "wifi_status" => run_wifi_status(&args.addr),
         _ => unreachable!(),
     }

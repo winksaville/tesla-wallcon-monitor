@@ -28,11 +28,39 @@ Commands can be abbreviated (e.g., `v` or `ver` for `version`).
 
 - `lifetime` - Display lifetime statistics
 - `version` - Display firmware and device information
+- `vitals` - Display real-time charging and electrical status
 - `wifi_status` - Display WiFi connection status
 
 ### Examples
 
 ```bash
+$ tesla-wallcon-monitor 192.168.1.221 vitals
+Tesla Wall Connector Vitals:
+  Vehicle Connected:  false
+  Contactor Closed:   false
+  Session Duration:   0m
+  Session Energy:     0.000 kWh
+  Vehicle Current:    0.0 A
+
+  Grid Voltage:       245.9 V
+  Grid Frequency:     59.867 Hz
+  Phase Currents:     A=0.0 B=0.0 C=0.0 N=0.0 A
+  Phase Voltages:     A=0.2 B=0.0 C=0.2 V
+
+  PCBA Temp:          21.9°C
+  Handle Temp:        19.5°C
+  MCU Temp:           29.3°C
+
+  Pilot High/Low:     11.8 / 11.8 V
+  Proximity:          0.5 V
+  Relay Coil:         0.0 V
+  Thermopile:         -84 uV
+
+  Uptime:             1d 4h 15m
+  EVSE State:         1
+  Config Status:      5
+  Not Ready Reasons:  [4, 8]
+
 $ tesla-wallcon-monitor 192.168.1.221 lifetime
 Tesla Wall Connector Lifetime Stats:
   Charge Starts:      1054
