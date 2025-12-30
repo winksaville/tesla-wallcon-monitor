@@ -2,6 +2,14 @@
 
 A CLI tool to monitor a Tesla Wall Connector.
 
+This was created with `claude code opus 4.5` and I use a local directory,
+[./.claude](./.claude), to preserve claude-code musings.
+If you'd like to do the same for this or any other repo I created
+`claude-symlink.sh` which adds symlink's to `~/.claude/projects/`.
+If you have a default claude code installation you can run
+`claude-symlink.sh ./.claude`. For details see
+[https://github.com/winksaville/claude-symlink.sh](https://github.com/winksaville/claude-symlink.sh).
+
 ## Building
 
 ```bash
