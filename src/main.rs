@@ -6,15 +6,19 @@ use crossterm::{
     execute,
     terminal::{self, Clear, ClearType},
 };
+use local_ip_address::local_ip;
 use log::info;
 use serde::{Deserialize, Serialize};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::fs::OpenOptions;
 use std::io::{stdout, Write};
+use std::net::Ipv4Addr;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Duration;
 
-const COMMANDS: &[&str] = &["lifetime", "version", "vitals", "wifi_status"];
+const COMMANDS: &[&str] = &["lifetime", "scan", "version", "vitals", "wifi_status"];
 
 fn min_abbreviation(cmd: &str, all_commands: &[&str]) -> usize {
     for len in 1..=cmd.len() {
@@ -60,11 +64,11 @@ fn log_json(endpoint: &str, json: &str) {
 #[command(name = "tesla-wallcon-monitor")]
 #[command(about = "Monitor a Tesla Wall Connector")]
 struct Args {
-    /// Name or IP address of the wall connector
-    addr: String,
-
-    /// Command to execute
+    /// Command to execute (use 'scan' to discover wall connectors)
     command: String,
+
+    /// Name or IP address of the wall connector (not required for scan)
+    addr: Option<String>,
 
     /// Loop mode: continuously update display (vitals only)
     #[arg(short, long)]
@@ -73,6 +77,10 @@ struct Args {
     /// Delay in seconds between updates in loop mode
     #[arg(short, long, default_value = "5")]
     delay: u64,
+
+    /// Timeout in milliseconds for scan probes
+    #[arg(short, long, default_value = "500")]
+    timeout: u64,
 
     /// Log file for debug output (JSON data with timestamps)
     #[arg(long)]
@@ -384,6 +392,91 @@ fn run_version(addr: &str) {
         Err(e) => {
             eprintln!("Error fetching version: {}", e);
             std::process::exit(1);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct DiscoveredWallConnector {
+    ip: String,
+    serial_number: String,
+    firmware_version: String,
+    part_number: String,
+}
+
+fn probe_wall_connector(ip: &str, timeout_ms: u64) -> Option<DiscoveredWallConnector> {
+    let url = format!("http://{}/api/1/version", ip);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_millis(timeout_ms))
+        .connect_timeout(Duration::from_millis(timeout_ms))
+        .build()
+        .ok()?;
+
+    let response = client.get(&url).send().ok()?;
+    let version: Version = response.json().ok()?;
+
+    Some(DiscoveredWallConnector {
+        ip: ip.to_string(),
+        serial_number: version.serial_number,
+        firmware_version: version.firmware_version,
+        part_number: version.part_number,
+    })
+}
+
+fn run_scan(timeout_ms: u64) {
+    let local_ip = match local_ip() {
+        Ok(ip) => ip,
+        Err(e) => {
+            eprintln!("Error getting local IP address: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let ipv4 = match local_ip {
+        std::net::IpAddr::V4(ip) => ip,
+        std::net::IpAddr::V6(_) => {
+            eprintln!("IPv6 not supported for scanning, need IPv4 network");
+            std::process::exit(1);
+        }
+    };
+
+    let octets = ipv4.octets();
+    let base_ip = format!("{}.{}.{}", octets[0], octets[1], octets[2]);
+
+    println!("Scanning network {}.0/24 for Tesla Wall Connectors...", base_ip);
+    println!("(timeout: {}ms per host)\n", timeout_ms);
+
+    let found: Arc<Mutex<Vec<DiscoveredWallConnector>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut handles = vec![];
+
+    for i in 1..=254 {
+        let ip = format!("{}.{}", base_ip, i);
+        let found = Arc::clone(&found);
+
+        let handle = thread::spawn(move || {
+            if let Some(wc) = probe_wall_connector(&ip, timeout_ms) {
+                let mut list = found.lock().unwrap();
+                list.push(wc);
+            }
+        });
+        handles.push(handle);
+    }
+
+    // Wait for all threads to complete
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    let results = found.lock().unwrap();
+    if results.is_empty() {
+        println!("No Tesla Wall Connectors found on the network.");
+    } else {
+        println!("Found {} Tesla Wall Connector(s):\n", results.len());
+        for wc in results.iter() {
+            println!("  {} ({})", wc.ip, wc.serial_number);
+            println!("    Firmware: {}", wc.firmware_version);
+            println!("    Part:     {}", wc.part_number);
+            println!();
         }
     }
 }
