@@ -354,15 +354,15 @@ fn run_vitals_loop(addr: &str, delay: u64) {
         stdout.flush().unwrap();
 
         // Check for key press with configured delay timeout
-        if event::poll(Duration::from_secs(delay)).unwrap() {
-            if let Event::Key(key_event) = event::read().unwrap() {
-                match key_event.code {
-                    KeyCode::Esc => break,
-                    KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
-                        break
-                    }
-                    _ => {}
+        if event::poll(Duration::from_secs(delay)).unwrap()
+            && let Event::Key(key_event) = event::read().unwrap()
+        {
+            match key_event.code {
+                KeyCode::Esc => break,
+                KeyCode::Char('c') if key_event.modifiers.contains(KeyModifiers::CONTROL) => {
+                    break;
                 }
+                _ => {}
             }
         }
     }
@@ -394,11 +394,11 @@ fn main() {
         .expect("Failed to parse arguments");
 
     // Initialize logging if log file specified
-    if let Some(ref log_path) = args.log {
-        if let Err(e) = init_logging(log_path) {
-            eprintln!("Failed to initialize logging: {}", e);
-            std::process::exit(1);
-        }
+    if let Some(ref log_path) = args.log
+        && let Err(e) = init_logging(log_path)
+    {
+        eprintln!("Failed to initialize logging: {}", e);
+        std::process::exit(1);
     }
 
     let command = match match_command(&args.command) {
