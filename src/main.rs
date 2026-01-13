@@ -107,7 +107,7 @@ struct Version {
     git_branch: String,
     part_number: String,
     serial_number: String,
-    web_service: String,
+    web_service: Option<String>,
 }
 
 fn get_version(addr: &str) -> Result<Version, Box<dyn std::error::Error>> {
@@ -379,7 +379,7 @@ fn run_version(addr: &str) {
             println!("  Git Branch:       {}", version.git_branch);
             println!("  Part Number:      {}", version.part_number);
             println!("  Serial Number:    {}", version.serial_number);
-            println!("  Web Service:      {}", version.web_service);
+            println!("  Web Service:      {}", version.web_service.as_deref().unwrap_or("none"));
         }
         Err(e) => {
             eprintln!("Error fetching version: {}", e);
