@@ -59,6 +59,8 @@ fn log_json(endpoint: &str, json: &str) {
 
 #[derive(Parser)]
 #[command(name = "tesla-wallcon-monitor")]
+#[command(version)]
+#[command(before_help = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")))]
 #[command(about = "Monitor a Tesla Wall Connector")]
 struct Args {
     /// Name or IP address of the wall connector
