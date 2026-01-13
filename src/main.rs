@@ -1,4 +1,4 @@
-use base64::{engine::general_purpose::STANDARD, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use clap::{CommandFactory, FromArgMatches, Parser};
 use crossterm::{
     cursor::MoveTo,
@@ -10,7 +10,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use simplelog::{ConfigBuilder, LevelFilter, WriteLogger};
 use std::fs::OpenOptions;
-use std::io::{stdout, Write};
+use std::io::{Write, stdout};
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -19,7 +19,10 @@ const COMMANDS: &[&str] = &["lifetime", "version", "vitals", "wifi_status"];
 fn min_abbreviation(cmd: &str, all_commands: &[&str]) -> usize {
     for len in 1..=cmd.len() {
         let prefix = &cmd[..len];
-        let matches: Vec<_> = all_commands.iter().filter(|c| c.starts_with(prefix)).collect();
+        let matches: Vec<_> = all_commands
+            .iter()
+            .filter(|c| c.starts_with(prefix))
+            .collect();
         if matches.len() == 1 {
             return len;
         }
@@ -44,9 +47,7 @@ fn init_logging(log_path: &PathBuf) -> Result<(), Box<dyn std::error::Error>> {
         .append(true)
         .open(log_path)?;
 
-    let config = ConfigBuilder::new()
-        .set_time_format_rfc3339()
-        .build();
+    let config = ConfigBuilder::new().set_time_format_rfc3339().build();
 
     WriteLogger::init(LevelFilter::Info, config, file)?;
     Ok(())
@@ -209,9 +210,18 @@ fn run_lifetime(addr: &str) {
         Ok(lifetime) => {
             println!("Tesla Wall Connector Lifetime Stats:");
             println!("  Charge Starts:      {}", lifetime.charge_starts);
-            println!("  Energy Delivered:   {:.2} kWh", lifetime.energy_wh as f64 / 1000.0);
-            println!("  Charging Time:      {}", format_duration(lifetime.charging_time_s));
-            println!("  Uptime:             {}", format_duration(lifetime.uptime_s));
+            println!(
+                "  Energy Delivered:   {:.2} kWh",
+                lifetime.energy_wh as f64 / 1000.0
+            );
+            println!(
+                "  Charging Time:      {}",
+                format_duration(lifetime.charging_time_s)
+            );
+            println!(
+                "  Uptime:             {}",
+                format_duration(lifetime.uptime_s)
+            );
             println!("  Contactor Cycles:   {}", lifetime.contactor_cycles);
             println!("  Loaded Cycles:      {}", lifetime.contactor_cycles_loaded);
             println!("  Connector Cycles:   {}", lifetime.connector_cycles);
@@ -278,22 +288,35 @@ fn format_vitals(vitals: &Vitals) -> String {
         "Tesla Wall Connector Vitals:".to_string(),
         format!("  Vehicle Connected:  {}", vitals.vehicle_connected),
         format!("  Contactor Closed:   {}", vitals.contactor_closed),
-        format!("  Session Duration:   {}", format_duration(vitals.session_s)),
-        format!("  Session Energy:     {:.3} kWh", vitals.session_energy_wh / 1000.0),
+        format!(
+            "  Session Duration:   {}",
+            format_duration(vitals.session_s)
+        ),
+        format!(
+            "  Session Energy:     {:.3} kWh",
+            vitals.session_energy_wh / 1000.0
+        ),
         format!("  Vehicle Current:    {:.1} A", vitals.vehicle_current_a),
         String::new(),
         format!("  Grid Voltage:       {:.1} V", vitals.grid_v),
         format!("  Grid Frequency:     {:.3} Hz", vitals.grid_hz),
-        format!("  Phase Currents:     A={:.1} B={:.1} C={:.1} N={:.1} A",
-            vitals.current_a_a, vitals.current_b_a, vitals.current_c_a, vitals.current_n_a),
-        format!("  Phase Voltages:     A={:.1} B={:.1} C={:.1} V",
-            vitals.voltage_a_v, vitals.voltage_b_v, vitals.voltage_c_v),
+        format!(
+            "  Phase Currents:     A={:.1} B={:.1} C={:.1} N={:.1} A",
+            vitals.current_a_a, vitals.current_b_a, vitals.current_c_a, vitals.current_n_a
+        ),
+        format!(
+            "  Phase Voltages:     A={:.1} B={:.1} C={:.1} V",
+            vitals.voltage_a_v, vitals.voltage_b_v, vitals.voltage_c_v
+        ),
         String::new(),
         format!("  PCBA Temp:          {:.1}°C", vitals.pcba_temp_c),
         format!("  Handle Temp:        {:.1}°C", vitals.handle_temp_c),
         format!("  MCU Temp:           {:.1}°C", vitals.mcu_temp_c),
         String::new(),
-        format!("  Pilot High/Low:     {:.1} / {:.1} V", vitals.pilot_high_v, vitals.pilot_low_v),
+        format!(
+            "  Pilot High/Low:     {:.1} / {:.1} V",
+            vitals.pilot_high_v, vitals.pilot_low_v
+        ),
         format!("  Proximity:          {:.1} V", vitals.prox_v),
         format!("  Relay Coil:         {:.1} V", vitals.relay_coil_v),
         format!("  Thermopile:         {} uV", vitals.input_thermopile_uv),
@@ -306,7 +329,10 @@ fn format_vitals(vitals: &Vitals) -> String {
         lines.push(format!("  Current Alerts:     {:?}", vitals.current_alerts));
     }
     if !vitals.evse_not_ready_reasons.is_empty() {
-        lines.push(format!("  Not Ready Reasons:  {:?}", vitals.evse_not_ready_reasons));
+        lines.push(format!(
+            "  Not Ready Reasons:  {:?}",
+            vitals.evse_not_ready_reasons
+        ));
     }
     lines.join("\n")
 }
@@ -344,7 +370,10 @@ fn run_vitals_loop(addr: &str, delay: u64) {
         match get_vitals(addr) {
             Ok(vitals) => {
                 print_vitals_raw(&vitals);
-                print!("\r\n  Press ESC or Ctrl+C to exit (updates every {}s)\r\n", delay);
+                print!(
+                    "\r\n  Press ESC or Ctrl+C to exit (updates every {}s)\r\n",
+                    delay
+                );
             }
             Err(e) => {
                 print!("Error fetching vitals: {}\r\n", e);
@@ -379,7 +408,10 @@ fn run_version(addr: &str) {
             println!("  Git Branch:       {}", version.git_branch);
             println!("  Part Number:      {}", version.part_number);
             println!("  Serial Number:    {}", version.serial_number);
-            println!("  Web Service:      {}", version.web_service.as_deref().unwrap_or("none"));
+            println!(
+                "  Web Service:      {}",
+                version.web_service.as_deref().unwrap_or("none")
+            );
         }
         Err(e) => {
             eprintln!("Error fetching version: {}", e);
@@ -390,8 +422,7 @@ fn run_version(addr: &str) {
 
 fn main() {
     let cmd = Args::command().mut_arg("command", |a| a.help(format_commands_help()));
-    let args = Args::from_arg_matches(&cmd.get_matches())
-        .expect("Failed to parse arguments");
+    let args = Args::from_arg_matches(&cmd.get_matches()).expect("Failed to parse arguments");
 
     // Initialize logging if log file specified
     if let Some(ref log_path) = args.log
